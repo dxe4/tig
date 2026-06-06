@@ -1,0 +1,52 @@
+Line 01: This is the first line of the file.
+Line 02: Some unchanged context here.
+Line 03: More context to pad things out.
+Line 04: Even more context padding.
+Line 05: Context line five.
+Line 06: Context line six.
+Line 07: Context line seven.
+Line 08: Context line eight.
+Line 09: Context line nine.
+Line 10: First hunk ends around here.
+Line 11: Original line eleven.
+Line 12: Original line twelve.
+Line 13: Back to unchanged context.
+Line 14: More unchanged context.
+Line 15: More unchanged context.
+Line 16: More unchanged context.
+Line 17: More unchanged context.
+Line 18: More unchanged context.
+Line 19: More unchanged context.
+Line 20: More unchanged context.
+Line 21: More unchanged context.
+Line 22: More unchanged context.
+Line 23: Second hunk area starts after this.
+Line 24: Original line twenty-four.
+Line 25: Original line twenty-five.
+Line 26: Back to unchanged context again.
+Line 27: More unchanged context.
+Line 28: More unchanged context.
+Line 29: More unchanged context.
+Line 30: More unchanged context.
+Line 31: More unchanged context.
+Line 32: More unchanged context.
+Line 33: More unchanged context.
+Line 34: More unchanged context.
+Line 35: More unchanged context.
+Line 36: Third hunk area starts after this.
+Line 37: Original line thirty-seven.
+Line 38: Original line thirty-eight.
+Line 39: Back to unchanged context again.
+Line 40: More unchanged context.
+Line 41: More unchanged context.
+Line 42: More unchanged context.
+Line 43: More unchanged context.
+Line 44: More unchanged context.
+Line 45: More unchanged context.
+Line 46: More unchanged context.
+Line 47: More unchanged context.
+Line 48: More unchanged context.
+Line 49: Fourth hunk area starts after this.
+Line 50: Original line fifty.
+Line 51: Original line fifty-one.
+Line 52: End of the file with some context.

@@ -1,0 +1,13 @@
+[app]
+name = "tig-review"
+version = "0.1.0"
+author = "Harry"
+
+[ui]
+theme = "dark"
+show_line_numbers = true
+
+[keybindings]
+quit = "q"
+copy = "y"
+search = "/"
