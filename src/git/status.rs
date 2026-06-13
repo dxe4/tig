@@ -1,44 +1,6 @@
+use crate::git::{FileChange, Hunk, HunkLine, LineType, check_git_output};
 use anyhow::Result;
 use std::process::Command;
-
-#[derive(Debug, Clone)]
-pub struct FileChange {
-    pub path: String,
-    pub status: char,
-    pub staged_status: Option<char>,
-    pub unstaged_status: Option<char>,
-    pub hunks: Vec<Hunk>,
-    pub is_binary: bool,
-}
-
-#[derive(Debug, Clone)]
-pub struct Hunk {
-    pub header: String,
-    pub lines: Vec<HunkLine>,
-}
-
-#[derive(Debug, Clone)]
-pub struct HunkLine {
-    pub content: String,
-    pub line_type: LineType,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum LineType {
-    Added,
-    Removed,
-    Context,
-    Header,
-    NoNewline,
-}
-
-fn check_git_output(output: &std::process::Output) -> Result<()> {
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("git command failed: {}", stderr.trim());
-    }
-    Ok(())
-}
 
 pub fn open_repo() -> Result<()> {
     let output = Command::new("git")
@@ -48,10 +10,12 @@ pub fn open_repo() -> Result<()> {
     Ok(())
 }
 
-pub fn get_changed_files() -> Result<Vec<FileChange>> {
-    let output = Command::new("git")
-        .args(["status", "--porcelain"])
-        .output()?;
+pub fn get_changed_files(include_untracked: bool) -> Result<Vec<FileChange>> {
+    let mut args = vec!["status", "--porcelain"];
+    if include_untracked {
+        args.push("-uall");
+    }
+    let output = Command::new("git").args(&args).output()?;
     check_git_output(&output)?;
     let stdout = String::from_utf8_lossy(&output.stdout);
 
@@ -152,7 +116,7 @@ pub fn get_diff_against_branch(path: &str, branch: Option<&str>) -> Result<(Vec<
         return Ok((Vec::new(), false));
     }
 
-    let hunks = parse_diff(&diff_text)?;
+    let hunks = crate::git::parse_diff(&diff_text)?;
     Ok((hunks, false))
 }
 
@@ -167,7 +131,6 @@ pub fn get_branches() -> Result<Vec<String>> {
         .map(|s| s.to_string())
         .filter(|s| !s.is_empty())
         .collect();
-    // Move the current branch to the top of the list.
     if let Ok(current) = Command::new("git")
         .args(["branch", "--show-current"])
         .output()
@@ -222,7 +185,7 @@ pub fn get_commit_diff(path: &str, commit: &str) -> Result<(Vec<Hunk>, bool)> {
         return Ok((Vec::new(), false));
     }
 
-    let hunks = parse_diff(&diff_text)?;
+    let hunks = crate::git::parse_diff(&diff_text)?;
     Ok((hunks, false))
 }
 
@@ -278,42 +241,4 @@ where
     }
     files.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(files)
-}
-
-fn parse_diff(text: &str) -> Result<Vec<Hunk>> {
-    let mut hunks = Vec::new();
-    let mut current_hunk: Option<Hunk> = None;
-    let mut in_hunk = false;
-
-    for line in text.lines() {
-        if line.starts_with("@@") {
-            if let Some(hunk) = current_hunk.take() {
-                hunks.push(hunk);
-            }
-            current_hunk = Some(Hunk {
-                header: line.to_string(),
-                lines: Vec::new(),
-            });
-            in_hunk = true;
-        } else if in_hunk && let Some(ref mut hunk) = current_hunk {
-            let first = line.chars().next();
-            let line_type = match first {
-                Some('+') => LineType::Added,
-                Some('-') => LineType::Removed,
-                Some(' ') => LineType::Context,
-                Some('\\') => LineType::NoNewline,
-                _ => LineType::Context,
-            };
-            hunk.lines.push(HunkLine {
-                content: line.to_string(),
-                line_type,
-            });
-        }
-    }
-
-    if let Some(hunk) = current_hunk {
-        hunks.push(hunk);
-    }
-
-    Ok(hunks)
 }

@@ -16,6 +16,9 @@ pub struct GlobalMatch {
     pub match_end: usize,
 }
 
+pub mod glob;
+pub use glob::glob_to_regex;
+
 pub fn search_content_filtered(
     files: &[FileChange],
     query: &str,
@@ -55,24 +58,6 @@ pub fn search_content_filtered(
     results
 }
 
-fn glob_to_regex(pattern: &str) -> Result<Regex, regex::Error> {
-    let mut regex_str = String::new();
-    regex_str.push('^');
-    for c in pattern.chars() {
-        match c {
-            '*' => regex_str.push_str(".*"),
-            '?' => regex_str.push('.'),
-            '.' | '+' | '(' | ')' | '[' | ']' | '{' | '}' | '^' | '$' | '|' | '\\' => {
-                regex_str.push('\\');
-                regex_str.push(c);
-            }
-            _ => regex_str.push(c),
-        }
-    }
-    regex_str.push('$');
-    Regex::new(&regex_str)
-}
-
 pub fn search_filename(files: &[FileChange], query: &str) -> Vec<SearchResult> {
     let query_lower = query.to_lowercase();
     files
@@ -102,7 +87,6 @@ pub fn global_search(query: &str) -> Result<Vec<GlobalMatch>, regex::Error> {
             }
         }
         _ => {
-            // Fallback: walk filesystem manually
             let repo_root = std::env::current_dir().unwrap_or_default();
             let mut stack = vec![repo_root.clone()];
             while let Some(dir) = stack.pop() {

@@ -41,12 +41,12 @@ fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>, app: &mut App)
         app.check_message_timeout();
 
         let timeout = tick_rate.saturating_sub(last_tick.elapsed());
-        if crossterm::event::poll(timeout)?
-            && let Event::Key(key) = event::read()?
-            && key.kind == KeyEventKind::Press
-            && app.handle_key(key)?
-        {
-            break;
+        if crossterm::event::poll(timeout)? {
+            match event::read()? {
+                Event::Key(key) if key.kind == KeyEventKind::Press && app.handle_key(key)? => break,
+                Event::Resize(_, _) => {}
+                _ => {}
+            }
         }
 
         if last_tick.elapsed() >= tick_rate {
