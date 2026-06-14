@@ -150,6 +150,8 @@ pub fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<bool> {
         KeyCode::Char('b') => {
             if app.compare_branch.is_some() {
                 app.clear_compare_branch()?;
+            } else if app.compare_range.is_some() {
+                app.clear_compare_range()?;
             } else {
                 app.enter_branch_select()?;
             }
@@ -157,6 +159,8 @@ pub fn handle_normal_key(app: &mut App, key: KeyEvent) -> Result<bool> {
         KeyCode::Char('c') => {
             if app.compare_commit.is_some() {
                 app.clear_compare_commit()?;
+            } else if app.compare_range.is_some() {
+                app.clear_compare_range()?;
             } else {
                 app.enter_commit_select()?;
             }

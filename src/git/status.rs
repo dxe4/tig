@@ -207,6 +207,47 @@ pub fn get_commit_files(commit: &str) -> Result<Vec<FileChange>> {
     build_files_from_status(&stdout, |path| get_commit_diff(path, commit))
 }
 
+pub fn get_range_files(left: &str, right: &str) -> Result<Vec<FileChange>> {
+    let output = Command::new("git")
+        .args(["diff", "--no-ext-diff", "--name-status", left, right])
+        .output()?;
+    check_git_output(&output)?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    build_files_from_status(&stdout, |path| get_diff_for_range(path, left, right))
+}
+
+pub fn get_diff_for_range(path: &str, left: &str, right: &str) -> Result<(Vec<Hunk>, bool)> {
+    let output = Command::new("git")
+        .args(range_diff_args(left, right, path))
+        .output()?;
+    check_git_output(&output)?;
+
+    let diff_text = String::from_utf8_lossy(&output.stdout);
+
+    if diff_text.contains("Binary files") {
+        return Ok((Vec::new(), true));
+    }
+
+    if diff_text.trim().is_empty() {
+        return Ok((Vec::new(), false));
+    }
+
+    let hunks = crate::git::parse_diff(&diff_text)?;
+    Ok((hunks, false))
+}
+
+fn range_diff_args(left: &str, right: &str, path: &str) -> Vec<String> {
+    vec![
+        "diff".to_string(),
+        "--no-ext-diff".to_string(),
+        "-U3".to_string(),
+        left.to_string(),
+        right.to_string(),
+        "--".to_string(),
+        path.to_string(),
+    ]
+}
+
 fn build_files_from_status<F>(stdout: &str, mut get_diff_fn: F) -> Result<Vec<FileChange>>
 where
     F: FnMut(&str) -> Result<(Vec<Hunk>, bool)>,
@@ -241,4 +282,26 @@ where
     }
     files.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn range_diff_args_builds_command() {
+        let args = range_diff_args("main", "feature", "src/main.rs");
+        assert_eq!(
+            args,
+            vec![
+                "diff",
+                "--no-ext-diff",
+                "-U3",
+                "main",
+                "feature",
+                "--",
+                "src/main.rs"
+            ]
+        );
+    }
 }

@@ -2,6 +2,7 @@ use crate::app::App;
 use crate::app::mode::Mode;
 use crate::git::{
     get_branch_files, get_branches, get_changed_files, get_commit_files, get_commits,
+    get_range_files,
 };
 use anyhow::Result;
 
@@ -18,6 +19,7 @@ pub fn enter_branch_select(app: &mut App) -> Result<()> {
 
 pub fn set_compare_branch(app: &mut App, branch: &str) -> Result<()> {
     app.compare_commit = None;
+    app.compare_range = None;
     app.files = get_branch_files(branch)?;
     app.compare_branch = Some(branch.to_string());
     app.invalidate_diff_cache();
@@ -28,6 +30,7 @@ pub fn set_compare_branch(app: &mut App, branch: &str) -> Result<()> {
 
 pub fn clear_compare_branch(app: &mut App) -> Result<()> {
     app.compare_branch = None;
+    app.compare_range = None;
     app.files = get_changed_files(app.show_untracked)?;
     app.invalidate_diff_cache();
     app.reset_view_to_files();
@@ -48,6 +51,7 @@ pub fn enter_commit_select(app: &mut App) -> Result<()> {
 
 pub fn set_compare_commit(app: &mut App, commit: &str) -> Result<()> {
     app.compare_branch = None;
+    app.compare_range = None;
     app.files = get_commit_files(commit)?;
     app.compare_commit = Some(commit.to_string());
     app.invalidate_diff_cache();
@@ -58,9 +62,30 @@ pub fn set_compare_commit(app: &mut App, commit: &str) -> Result<()> {
 
 pub fn clear_compare_commit(app: &mut App) -> Result<()> {
     app.compare_commit = None;
+    app.compare_range = None;
     app.files = get_changed_files(app.show_untracked)?;
     app.invalidate_diff_cache();
     app.reset_view_to_files();
     app.show_message("Cleared commit view".to_string());
+    Ok(())
+}
+
+pub fn set_compare_range(app: &mut App, left: &str, right: &str) -> Result<()> {
+    app.compare_branch = None;
+    app.compare_commit = None;
+    app.files = get_range_files(left, right)?;
+    app.compare_range = Some((left.to_string(), right.to_string()));
+    app.invalidate_diff_cache();
+    app.reset_view_to_files();
+    app.show_message(format!("Comparing range: {}..{}", left, right));
+    Ok(())
+}
+
+pub fn clear_compare_range(app: &mut App) -> Result<()> {
+    app.compare_range = None;
+    app.files = get_changed_files(app.show_untracked)?;
+    app.invalidate_diff_cache();
+    app.reset_view_to_files();
+    app.show_message("Cleared range comparison".to_string());
     Ok(())
 }

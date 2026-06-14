@@ -8,14 +8,17 @@ use ratatui::prelude::*;
 use std::io;
 
 mod app;
+mod cli;
 mod git;
 mod search;
 mod ui;
 
 use app::App;
+use cli::parse_arg;
 
 fn main() -> Result<()> {
-    let mut app = App::new()?;
+    let initial = parse_arg(std::env::args().skip(1));
+    let mut app = App::new(initial)?;
 
     enable_raw_mode()?;
     let mut stdout = io::stdout();

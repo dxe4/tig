@@ -1,3 +1,4 @@
+use crate::cli::CompareTarget;
 use crate::git::{FileChange, LineType, get_changed_files, open_repo};
 use crate::search::{GlobalMatch, SearchResult};
 use anyhow::Result;
@@ -42,6 +43,7 @@ pub struct App {
     pub branches: Vec<String>,
     pub selected_branch: usize,
     pub compare_branch: Option<String>,
+    pub compare_range: Option<(String, String)>,
     pub commits: Vec<(String, String)>,
     pub selected_commit: usize,
     pub compare_commit: Option<String>,
@@ -53,7 +55,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn new() -> Result<Self> {
+    pub fn new(initial: Option<CompareTarget>) -> Result<Self> {
         open_repo()?;
         let files = get_changed_files(false)?;
         let mut app = Self {
@@ -81,6 +83,7 @@ impl App {
             branches: Vec::new(),
             selected_branch: 0,
             compare_branch: None,
+            compare_range: None,
             commits: Vec::new(),
             selected_commit: 0,
             compare_commit: None,
@@ -91,6 +94,13 @@ impl App {
             diff_cache: None,
         };
         app.reset_view_to_files();
+
+        if let Some(target) = initial {
+            if let Err(e) = app.apply_target(target) {
+                app.show_message(format!("Failed to load target: {}", e));
+            }
+        }
+
         Ok(app)
     }
 
@@ -132,6 +142,21 @@ impl App {
 
     fn clear_compare_commit(&mut self) -> Result<()> {
         compare::clear_compare_commit(self)
+    }
+
+    fn set_compare_range(&mut self, left: &str, right: &str) -> Result<()> {
+        compare::set_compare_range(self, left, right)
+    }
+
+    fn clear_compare_range(&mut self) -> Result<()> {
+        compare::clear_compare_range(self)
+    }
+
+    fn apply_target(&mut self, target: CompareTarget) -> Result<()> {
+        match target {
+            CompareTarget::Commit(ref commit) => self.set_compare_commit(commit),
+            CompareTarget::Range { ref left, ref right } => self.set_compare_range(left, right),
+        }
     }
 
     pub fn diff_lines(&mut self) -> Rc<Vec<DiffLine>> {
@@ -398,10 +423,12 @@ impl App {
     fn reload_files(&mut self) -> Result<()> {
         self.search_results.clear();
         let old_path = self.files.get(self.selected_file).map(|f| f.path.clone());
-        self.files = if let Some(ref branch) = self.compare_branch {
-            crate::git::get_branch_files(branch)?
+        self.files = if let Some((ref left, ref right)) = self.compare_range {
+            crate::git::get_range_files(left, right)?
         } else if let Some(ref commit) = self.compare_commit {
             crate::git::get_commit_files(commit)?
+        } else if let Some(ref branch) = self.compare_branch {
+            crate::git::get_branch_files(branch)?
         } else {
             get_changed_files(self.show_untracked)?
         };
@@ -499,6 +526,7 @@ impl App {
             branches: Vec::new(),
             selected_branch: 0,
             compare_branch: None,
+            compare_range: None,
             commits: Vec::new(),
             selected_commit: 0,
             compare_commit: None,
@@ -510,5 +538,41 @@ impl App {
         };
         app.reset_view_to_files();
         app
+    }
+}
+
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+
+    #[test]
+    fn app_new_with_commit_target() {
+        let app = App::new(Some(CompareTarget::Commit("HEAD".to_string()))).unwrap();
+        assert!(app.compare_commit.is_some());
+        assert!(app.compare_branch.is_none());
+        assert!(app.compare_range.is_none());
+        assert!(!app.files.is_empty());
+    }
+
+    #[test]
+    fn app_new_with_range_target() {
+        let app = App::new(Some(CompareTarget::Range {
+            left: "main".to_string(),
+            right: "test-diff-branch".to_string(),
+        }))
+        .unwrap();
+        assert!(app.compare_range.is_some());
+        assert!(app.compare_branch.is_none());
+        assert!(app.compare_commit.is_none());
+    }
+
+    #[test]
+    fn app_new_with_invalid_target_shows_message() {
+        let app = App::new(Some(CompareTarget::Commit("does-not-exist".to_string()))).unwrap();
+        assert!(app.compare_commit.is_none());
+        assert!(app.compare_branch.is_none());
+        assert!(app.compare_range.is_none());
+        assert!(app.message.is_some());
     }
 }
